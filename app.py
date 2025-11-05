@@ -1,100 +1,63 @@
 import streamlit as st
-
-st.title("Acta Digital")
-st.write("¡Bienvenido a tu aplicación con Streamlit!")
-
-import streamlit as st
-import hashlib, time, json
-
-
-import streamlit as st
 import hashlib, time, json
 from pathlib import Path
 
-# --- Funciones auxiliares ---
-def calcular_hash(texto: str) -> str:
-    """Calcula SHA-256 del texto dado y devuelve el hex digest."""
-    h = hashlib.sha256()
-    h.update(texto.encode("utf-8"))
-    return h.hexdigest()
-
-def guardar_registro(registro: dict, fichero="records.json"):
-    """
-    Guarda (anexa) un registro JSON en un fichero local.
-    Nota: en Streamlit Cloud los ficheros locales persisten mientras la app esté desplegada,
-    pero no reemplazan el repositorio en GitHub.
-    """
-    p = Path(fichero)
-    datos = []
-    if p.exists():
-        try:
-            datos = json.loads(p.read_text(encoding="utf-8"))
-        except Exception:
-            datos = []
-    datos.append(registro)
-    p.write_text(json.dumps(datos, indent=2, ensure_ascii=False), encoding="utf-8")
-
-# --- Interfaz Streamlit mínima ---
-st.title("Acta Digital — Demo de imports básicos")
-texto = st.text_area("Escribe el contenido a hashear", value="Ejemplo de acta...")
-
-if st.button("Calcular hash y registrar"):
-    ts = int(time.time())
-    h = calcular_hash(texto)
-    registro = {
-        "timestamp": ts,
-        "readable_time": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(ts)),
-        "content": texto,
-        "sha256": h
-    }
-    guardar_registro(registro)
-    st.success("Hash calculado y registro guardado localmente.")
-    st.write("SHA-256:", h)
-    st.json(registro)
-
-# Mostrar últimos registros (si existen)
-p = Path("records.json")
-if p.exists():
-    try:
-        registros = json.loads(p.read_text(encoding="utf-8"))
-        st.write("Registros almacenados (últimos 5):")
-        for r in registros[-5:][::-1]:
-            st.write(r["readable_time"], "-", r["sha256"][:12], "...")
-    except Exception:
-        st.warning("No se pudieron leer los registros.")
-
-
-
-
-
-
-import streamlit as st
-import hashlib, time, json
-
-# --- Función para generar hash ---
+# --- Función para generar el hash SHA-256 ---
 def get_hash(text):
     return hashlib.sha256(text.encode()).hexdigest()
 
-st.title("🧾 Acta Digital — Generador de Hash Original")
+# --- Configuración de la aplicación ---
+st.set_page_config(page_title="Registro de Documentos Digitales", page_icon="🧾")
+st.title("🧾 Registro de Documentos Digitales")
 
-st.write("Genera un hash único para tu acta o documento.")
+st.write("""
+Esta aplicación permite **registrar documentos digitales** mediante un hash único (SHA-256).  
+Cada registro incluye el propietario, el contenido y la hora exacta del registro.  
+El archivo resultante (`blockchain.json`) funciona como una **cadena de bloques simple**.
+""")
 
-# Campo de texto
-texto = st.text_area("✍️ Escribe el texto del acta:", placeholder="Ejemplo: Reunión del comité...")
+# --- Entradas del usuario ---
+owner = st.text_input("👤 Propietario del documento", placeholder="Ejemplo: Juan Pérez")
+content = st.text_area("📝 Contenido del documento", placeholder="Escribe el texto completo del documento...")
 
-# Botón para generar hash
-if st.button("🔐 Generar hash"):
-    if texto.strip():
-        hash_resultado = get_hash(texto)
-        st.success("✅ Hash original generado correctamente.")
-        st.write("**SHA-256:**")
-        st.code(hash_resultado)
-        st.info("Guarda este hash — es la huella digital del texto original.")
+# --- Acción: registrar documento ---
+if st.button("🔐 Registrar documento"):
+    if not owner.strip() or not content.strip():
+        st.warning("Por favor, completa todos los campos antes de registrar.")
     else:
-        st.warning("Por favor, escribe un texto antes de generar el hash.")
+        record = {
+            "owner": owner.strip(),
+            "hash": get_hash(content),
+            "time": time.time(),
+            "readable_time": time.strftime("%Y-%m-%d %H:%M:%S")
+        }
 
+        # Guardar el registro (una línea JSON por registro)
+        with open("blockchain.json", "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
 
+        st.success("✅ Documento registrado con éxito")
+        st.code(record["hash"], language="bash")
+        st.caption("Hash generado — guarda este valor para verificar la autenticidad del documento.")
 
+# --- Mostrar los registros existentes ---
+st.subheader("📜 Registros recientes")
 
-
+blockchain_file = Path("blockchain.json")
+if blockchain_file.exists():
+    try:
+        lines = blockchain_file.read_text(encoding="utf-8").strip().splitlines()
+        if lines:
+            last_records = [json.loads(l) for l in lines[-5:][::-1]]  # mostrar últimos 5
+            for r in last_records:
+                st.markdown(f"**{r['readable_time']} — {r['owner']}**")
+                st.write("`", r['hash'][:20], "...`")
+                with st.expander("Ver contenido"):
+                    st.write(r["content"])
+        else:
+            st.info("No hay registros todavía.")
+    except Exception as e:
+        st.error(f"Error al leer registros: {e}")
+else:
+    st.info("No existe todavía el archivo `blockchain.json`.")
 
