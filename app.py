@@ -67,3 +67,34 @@ if p.exists():
 
 
 
+
+import streamlit as st
+import hashlib, time, json
+
+# --- Función para generar hash ---
+def get_hash(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+st.title("🧾 Acta Digital — Generador de Hash Original")
+
+st.write("Genera un hash único para tu acta o documento.")
+
+# Campo de texto
+texto = st.text_area("✍️ Escribe el texto del acta:", placeholder="Ejemplo: Reunión del comité...")
+
+# Botón para generar hash
+if st.button("🔐 Generar hash"):
+    if texto.strip():
+        hash_resultado = get_hash(texto)
+        st.success("✅ Hash original generado correctamente.")
+        st.write("**SHA-256:**")
+        st.code(hash_resultado)
+        st.info("Guarda este hash — es la huella digital del texto original.")
+    else:
+        st.warning("Por favor, escribe un texto antes de generar el hash.")
+
+
+
+
+
+
