@@ -62,3 +62,72 @@ if p.exists():
             st.write(r["readable_time"], "-", r["sha256"][:12], "...")
     except Exception:
         st.warning("No se pudieron leer los registros.")
+
+
+
+
+
+import streamlit as st
+import hashlib, time, json
+from pathlib import Path
+
+# --- Función para calcular el hash ---
+def get_hash(text):
+    return hashlib.sha256(text.encode()).hexdigest()
+
+# --- Función para guardar los registros en un archivo JSON ---
+def save_record(content, hash_value):
+    record = {
+        "timestamp": int(time.time()),
+        "readable_time": time.strftime("%Y-%m-%d %H:%M:%S"),
+        "content": content,
+        "sha256": hash_value
+    }
+
+    # Cargar registros existentes (si el archivo ya existe)
+    path = Path("records.json")
+    records = []
+    if path.exists():
+        try:
+            records = json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            records = []
+
+    # Añadir el nuevo registro
+    records.append(record)
+    path.write_text(json.dumps(records, indent=2, ensure_ascii=False), encoding="utf-8")
+
+# --- Interfaz de usuario Streamlit ---
+st.title("🧾 Acta Digital — Sistema de Hash Seguro")
+
+st.write("Esta aplicación genera un hash único (SHA-256) para registrar el contenido de un acta o texto.")
+
+texto = st.text_area("✍️ Escribe el texto del acta:", placeholder="Ejemplo: Reunión del comité...")
+
+if st.button("🔐 Generar hash y guardar registro"):
+    if texto.strip():
+        hash_resultado = get_hash(texto)
+        save_record(texto, hash_resultado)
+        st.success("✅ Hash generado y registro guardado correctamente.")
+        st.write("**SHA-256:**", hash_resultado)
+    else:
+        st.warning("Por favor, escribe algún texto antes de generar el hash.")
+
+# --- Mostrar registros guardados ---
+st.subheader("📜 Últimos registros")
+path = Path("records.json")
+if path.exists():
+    try:
+        registros = json.loads(path.read_text(encoding="utf-8"))
+        if registros:
+            for r in registros[-5:][::-1]:
+                st.markdown(f"**{r['readable_time']}** — `{r['sha256'][:16]}...`")
+                with st.expander("Ver contenido"):
+                    st.write(r["content"])
+        else:
+            st.info("No hay registros todavía.")
+    except Exception:
+        st.error("Error al leer los registros.")
+else:
+    st.info("Aún no hay registros guardados.")
+
